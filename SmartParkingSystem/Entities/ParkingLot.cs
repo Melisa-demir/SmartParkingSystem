@@ -6,6 +6,6 @@
         public string Name { get; set; }
         public string Address { get; set; }
         public int TotalCapacity { get; set; }
-        public ICollection<ParkingLot> ParkingSpots { get; set; }
+        public ICollection<ParkingSpot>? ParkingSpots { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartParkingSystem.Data;
+using SmartParkingSystem.DTOs;
 using SmartParkingSystem.Entities;
 
 namespace SmartParkingSystem.Controllers
@@ -36,8 +37,15 @@ namespace SmartParkingSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateParkingLot(ParkingLot parkingLot)
+        public async Task<IActionResult> CreateParkingLot(CreateParkingLotDto dto)
         {
+            var parkingLot = new ParkingLot
+            {
+                Name = dto.Name,
+                Address = dto.Address,
+                TotalCapacity = dto.TotalCapacity
+            };
+
             _context.ParkingLots.Add(parkingLot);
             await _context.SaveChangesAsync();
 
@@ -59,6 +67,20 @@ namespace SmartParkingSystem.Controllers
             existingParkingLot.TotalCapacity = parkingLot.TotalCapacity;
 
             return Ok(parkingLot);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteParkingLot(int id )
+        {
+            var parkingLot = await _context.ParkingLots.FindAsync(id);
+            if(parkingLot == null)
+                return NotFound("Parking lot not found");
+
+            _context.ParkingLots.Remove(parkingLot);
+            await _context.SaveChangesAsync();
+
+            return Ok("Parking lot deleted succesfully");
+            
         }
     }
 }
