@@ -5,5 +5,6 @@
         public string SpotNumber { get; set; }
         public bool IsOccupied { get; set; }
         public int ParkingLotId { get; set; }
+        public decimal HourlyPrice { get; set; }
     }
 }
