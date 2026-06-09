@@ -3,9 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using SmartParkingSystem.Data;
 using SmartParkingSystem.DTOs;
 using SmartParkingSystem.Entities;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SmartParkingSystem.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ParkingLotsController : ControllerBase

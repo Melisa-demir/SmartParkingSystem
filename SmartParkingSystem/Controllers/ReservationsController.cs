@@ -3,9 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using SmartParkingSystem.Data;
 using SmartParkingSystem.DTOs;
 using SmartParkingSystem.Entities;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SmartParkingSystem.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ReservationsController : ControllerBase
@@ -68,5 +70,28 @@ namespace SmartParkingSystem.Controllers
 
             return Ok(reservation);
         }
+
+        [HttpPut("{id}/complete")]
+        public async Task <IActionResult> CompleteReservation (int id)
+        {
+            var reservation = await _context.Reservations
+                .Include(x => x.ParkingSpot)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (reservation == null)
+                return NotFound("Reservation not found");
+
+            if (reservation.Status == "Completed")
+                return BadRequest("Reservation is already completed.");
+
+            reservation.Status = "Completed";
+
+            if(reservation.ParkingSpot != null)
+                reservation.ParkingSpot.IsOccupied = false;
+
+            await _context.SaveChangesAsync();
+            return Ok("Reservation completed successfully");
+        }
+        
     }
 }
