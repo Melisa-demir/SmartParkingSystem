@@ -4,19 +4,23 @@ using SmartParkingSystem.Data;
 using SmartParkingSystem.DTOs;
 using SmartParkingSystem.Entities;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
+using SmartParkingSystem.Hubs;
 
 namespace SmartParkingSystem.Controllers
 {
-    [Authorize]
-    [Route("api/controller")]
+    //[Authorize]
+    [Route("api/[controller]")]
     [ApiController]
     public class ParkingSportsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IHubContext<ParkingHub> _hubContext;
 
-        public ParkingSportsController(AppDbContext context)
+        public ParkingSportsController(AppDbContext context, IHubContext<ParkingHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
         [HttpGet]
@@ -100,6 +104,28 @@ namespace SmartParkingSystem.Controllers
 
             return Ok("Parking Spot is remove");
 
+        }
+
+        [HttpPut("{id}/toggle-status")]
+        public async Task <IActionResult> ToggleParkingSpotStatus (int id)
+        {
+            var parkingSpot = await _context.ParkingSpots.FindAsync(id);
+
+            if (parkingSpot == null)
+                return NotFound("Parking spot not found");
+
+            parkingSpot.IsOccupied = !parkingSpot.IsOccupied;
+
+            await _context.SaveChangesAsync();
+
+            await _hubContext.Clients.All.SendAsync("ParkingSpotUpdated", new
+            {
+                parkingSpotId = parkingSpot.Id,
+                spotNumber = parkingSpot.SpotNumber,
+                isOccupied = parkingSpot.IsOccupied
+            });
+
+            return Ok(parkingSpot);
         }
     }
 }

@@ -4,6 +4,9 @@ using SmartParkingSystem.Data;
 using SmartParkingSystem.DTOs;
 using SmartParkingSystem.Entities;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
+using SmartParkingSystem.Hubs;
+
 
 namespace SmartParkingSystem.Controllers
 {
@@ -13,10 +16,12 @@ namespace SmartParkingSystem.Controllers
     public class ReservationsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IHubContext<ParkingHub> _hubContext;
 
-        public ReservationsController(AppDbContext context)
+        public ReservationsController(AppDbContext context, IHubContext<ParkingHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
         [HttpGet]
@@ -68,8 +73,16 @@ namespace SmartParkingSystem.Controllers
             parkingSpot.IsOccupied = true;
             await _context.SaveChangesAsync();
 
+            await _hubContext.Clients.All.SendAsync("ParkingSpotUpdated", new
+            {
+                parkingSpotId = parkingSpot.Id,
+                spotNumber = parkingSpot.SpotNumber,
+                isOccupied = parkingSpot.IsOccupied
+            });
+
             return Ok(reservation);
         }
+
 
         [HttpPut("{id}/complete")]
         public async Task <IActionResult> CompleteReservation (int id)
