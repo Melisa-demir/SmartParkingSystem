@@ -49,8 +49,14 @@ namespace SmartParkingSystem.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+                return BadRequest("Email and password are required.");
+
+            var email = dto.Email.Trim();
+            var password = dto.Password.Trim();
+
             var user = await _context.Users
-                .FirstOrDefaultAsync(x => x.Email == dto.Email && x.PasswordHash == dto.Password);
+                .FirstOrDefaultAsync(x => x.Email == email && x.PasswordHash == password);
 
             if (user == null)
                 return BadRequest("Invalid email or password.");
@@ -59,7 +65,7 @@ namespace SmartParkingSystem.Controllers
 
             return Ok(new
             {
-                token = token,
+                token,
                 user = new
                 {
                     user.Id,

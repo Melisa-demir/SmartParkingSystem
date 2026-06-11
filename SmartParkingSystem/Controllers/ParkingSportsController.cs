@@ -9,7 +9,7 @@ using SmartParkingSystem.Hubs;
 
 namespace SmartParkingSystem.Controllers
 {
-    //[Authorize]
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ParkingSportsController : ControllerBase
