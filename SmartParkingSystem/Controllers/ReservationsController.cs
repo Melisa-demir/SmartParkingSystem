@@ -40,6 +40,12 @@ namespace SmartParkingSystem.Controllers
         {
             var userExists = await _context.Users.AnyAsync(x => x.Id == dto.UserId);
 
+            var hasActiveReservation = await _context.Reservations
+                .AnyAsync(x => x.UserId == dto.UserId && x.Status == "Active");
+
+            if (hasActiveReservation)
+                return BadRequest("User already has an active reservation");
+
             if (!userExists)
                 return BadRequest("User not found");
 

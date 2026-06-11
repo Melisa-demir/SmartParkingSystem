@@ -4,12 +4,18 @@ import * as signalR from "@microsoft/signalr";
 function App() {
   const [parkingSpots, setParkingSpots] = useState([]);
   const [reservations, setReservations] = useState([]);
+  const [adminDashboard, setAdminDashboard] = useState(null);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [isLoggedIn, setIsLoggedIn] = useState(
     localStorage.getItem("token") !== null
   );
+
+  const [role, setRole] = useState(localStorage.getItem("role"));
+
+  const isAdmin = role === "Admin";
 
   const getParkingSpots = () => {
     const token = localStorage.getItem("token");
@@ -48,12 +54,35 @@ function App() {
       .then((data) => {
         const userId = Number(localStorage.getItem("userId"));
 
-        const myReservations = data.filter(
-          (reservation) => reservation.userId === userId
-        );
+        if (isAdmin) {
+          setReservations(data);
+        } else {
+          const myReservations = data.filter(
+            (reservation) => reservation.userId === userId
+          );
 
-        setReservations(myReservations);
+          setReservations(myReservations);
+        }
       })
+      .catch((error) => console.error(error));
+  };
+
+  const getAdminDashboard = () => {
+    const token = localStorage.getItem("token");
+
+    fetch("https://localhost:7002/api/Admin/dashboard", {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Admin dashboard alınamadı: " + response.status);
+        }
+
+        return await response.json();
+      })
+      .then((data) => setAdminDashboard(data))
       .catch((error) => console.error(error));
   };
 
@@ -89,6 +118,38 @@ function App() {
         alert("Rezervasyon oluşturuldu.");
         getParkingSpots();
         getReservations();
+
+        if (isAdmin) {
+          getAdminDashboard();
+        }
+      })
+      .catch((error) => console.error(error));
+  };
+
+  const completeReservation = (id) => {
+    const token = localStorage.getItem("token");
+
+    fetch(`https://localhost:7002/api/Reservations/${id}/complete`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(async (response) => {
+        const text = await response.text();
+
+        if (!response.ok) {
+          alert(text || "Rezervasyon tamamlanamadı.");
+          return;
+        }
+
+        alert("Rezervasyon tamamlandı.");
+        getReservations();
+        getParkingSpots();
+
+        if (isAdmin) {
+          getAdminDashboard();
+        }
       })
       .catch((error) => console.error(error));
   };
@@ -114,6 +175,10 @@ function App() {
         alert("Tüm rezervasyonlar silindi.");
         getReservations();
         getParkingSpots();
+
+        if (isAdmin) {
+          getAdminDashboard();
+        }
       })
       .catch((error) => console.error(error));
   };
@@ -137,6 +202,10 @@ function App() {
       .then(() => {
         getParkingSpots();
         getReservations();
+
+        if (isAdmin) {
+          getAdminDashboard();
+        }
       })
       .catch((error) => console.error(error));
   };
@@ -160,12 +229,12 @@ function App() {
 
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", data.user.id);
+        localStorage.setItem("role", data.user.role);
 
+        setRole(data.user.role);
         setIsLoggedIn(true);
 
         alert("Login başarılı");
-        getParkingSpots();
-        getReservations();
       })
       .catch((error) => console.error(error));
   };
@@ -173,10 +242,13 @@ function App() {
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
+    localStorage.removeItem("role");
 
     setIsLoggedIn(false);
+    setRole(null);
     setParkingSpots([]);
     setReservations([]);
+    setAdminDashboard(null);
   };
 
   useEffect(() => {
@@ -186,6 +258,10 @@ function App() {
 
     getParkingSpots();
     getReservations();
+
+    if (isAdmin) {
+      getAdminDashboard();
+    }
 
     const connection = new signalR.HubConnectionBuilder()
       .withUrl("https://localhost:7002/parkingHub")
@@ -201,12 +277,16 @@ function App() {
       console.log("Parking spot güncellendi.");
       getParkingSpots();
       getReservations();
+
+      if (isAdmin) {
+        getAdminDashboard();
+      }
     });
 
     return () => {
       connection.stop();
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, role]);
 
   if (!isLoggedIn) {
     return (
@@ -244,9 +324,29 @@ function App() {
     <div>
       <h1>🚗 Smart Parking System</h1>
 
+      <p>
+        Giriş yapan rol: <strong>{role}</strong>
+      </p>
+
       <button onClick={logout}>Logout</button>
 
       <h2>Dashboard</h2>
+
+      {isAdmin && adminDashboard && (
+        <div>
+          <h3>Admin Dashboard</h3>
+
+          <p>Toplam Kullanıcı: {adminDashboard.totalUsers}</p>
+          <p>Toplam Rezervasyon: {adminDashboard.totalReservations}</p>
+          <p>Aktif Rezervasyon: {adminDashboard.activeReservations}</p>
+          <p>Tamamlanan Rezervasyon: {adminDashboard.completedReservations}</p>
+          <p>Toplam Park Yeri: {adminDashboard.totalParkingSpots}</p>
+          <p>Dolu Park Yeri: {adminDashboard.occupiedParkingSpots}</p>
+          <p>Boş Park Yeri: {adminDashboard.emptyParkingSpots}</p>
+
+          <hr />
+        </div>
+      )}
 
       <p>Toplam Park Yeri: {parkingSpots.length}</p>
 
@@ -273,15 +373,17 @@ function App() {
             </button>
           )}
 
-          <button onClick={() => toggleParkingSpot(spot.id)}>
-            {spot.isOccupied ? "Boş Yap" : "Dolu Yap"}
-          </button>
+          {isAdmin && (
+            <button onClick={() => toggleParkingSpot(spot.id)}>
+              {spot.isOccupied ? "Boş Yap" : "Dolu Yap"}
+            </button>
+          )}
         </div>
       ))}
 
-      <h2>My Reservations</h2>
+      <h2>{isAdmin ? "All Reservations" : "My Reservations"}</h2>
 
-      {reservations.length > 0 && (
+      {isAdmin && reservations.length > 0 && (
         <button onClick={deleteAllReservations}>
           Tüm Rezervasyonları Sil
         </button>
@@ -294,6 +396,13 @@ function App() {
           <strong>{reservation.parkingSpot?.spotNumber}</strong>
 
           <br />
+
+          {isAdmin && (
+            <>
+              User Id: {reservation.userId}
+              <br />
+            </>
+          )}
 
           Start: {new Date(reservation.startTime).toLocaleString()}
 
@@ -308,6 +417,15 @@ function App() {
           <br />
 
           Status: {reservation.status}
+
+          {reservation.status === "Active" && (
+            <>
+              <br />
+              <button onClick={() => completeReservation(reservation.id)}>
+                Rezervasyonu Tamamla
+              </button>
+            </>
+          )}
 
           <hr />
         </div>
