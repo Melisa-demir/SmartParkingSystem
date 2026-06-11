@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace SmartParkingSystem.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [Route("api/[controller]")]
     [ApiController]
     public class UserController : ControllerBase

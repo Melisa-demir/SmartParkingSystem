@@ -85,7 +85,7 @@ namespace SmartParkingSystem.Controllers
 
 
         [HttpPut("{id}/complete")]
-        public async Task <IActionResult> CompleteReservation (int id)
+        public async Task<IActionResult> CompleteReservation(int id)
         {
             var reservation = await _context.Reservations
                 .Include(x => x.ParkingSpot)
@@ -99,11 +99,26 @@ namespace SmartParkingSystem.Controllers
 
             reservation.Status = "Completed";
 
-            if(reservation.ParkingSpot != null)
+            if (reservation.ParkingSpot != null)
                 reservation.ParkingSpot.IsOccupied = false;
 
             await _context.SaveChangesAsync();
             return Ok("Reservation completed successfully");
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteReservation (int id)
+        {
+            var reservation = await _context.Reservations.FindAsync(id);
+
+            if (reservation == null)
+                return NotFound("Reservation not found");
+
+            _context.Reservations.Remove(reservation);
+            await _context.SaveChangesAsync();
+
+            return Ok("Reservation deleted succesfully");
         }
         
     }

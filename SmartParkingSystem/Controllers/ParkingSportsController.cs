@@ -106,6 +106,7 @@ namespace SmartParkingSystem.Controllers
 
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id}/toggle-status")]
         public async Task <IActionResult> ToggleParkingSpotStatus (int id)
         {
