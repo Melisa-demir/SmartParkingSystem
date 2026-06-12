@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartparking-api-container
+    ports:
+      - "5005:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Server=host.docker.internal,1433;Database=SmartParkingDb;User Id=${DB_USER};Password=${DB_PASSWORD};TrustServerCertificate=True;"
+
+  client:
+    build:
+      context: ./smart-parking-client
+      dockerfile: Dockerfile
+    container_name: smartparking-client-container
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api

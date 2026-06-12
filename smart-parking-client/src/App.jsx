@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 
+const API_URL = "http://localhost:5005";
+
 function App() {
   const [parkingSpots, setParkingSpots] = useState([]);
   const [reservations, setReservations] = useState([]);
@@ -20,7 +22,7 @@ function App() {
   const getParkingSpots = () => {
     const token = localStorage.getItem("token");
 
-    fetch("https://localhost:7002/api/ParkingSports", {
+    fetch(`${API_URL}/api/ParkingSports`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -39,7 +41,7 @@ function App() {
   const getReservations = () => {
     const token = localStorage.getItem("token");
 
-    fetch("https://localhost:7002/api/Reservations", {
+    fetch(`${API_URL}/api/Reservations`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -70,7 +72,7 @@ function App() {
   const getAdminDashboard = () => {
     const token = localStorage.getItem("token");
 
-    fetch("https://localhost:7002/api/Admin/dashboard", {
+    fetch(`${API_URL}/api/Admin/dashboard`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -94,7 +96,7 @@ function App() {
     const endTime = new Date();
     endTime.setHours(endTime.getHours() + 2);
 
-    fetch("https://localhost:7002/api/Reservations", {
+    fetch(`${API_URL}/api/Reservations`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -129,7 +131,7 @@ function App() {
   const completeReservation = (id) => {
     const token = localStorage.getItem("token");
 
-    fetch(`https://localhost:7002/api/Reservations/${id}/complete`, {
+    fetch(`${API_URL}/api/Reservations/${id}/complete`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`
@@ -163,7 +165,7 @@ function App() {
 
     Promise.all(
       reservations.map((reservation) =>
-        fetch(`https://localhost:7002/api/Reservations/${reservation.id}`, {
+        fetch(`${API_URL}/api/Reservations/${reservation.id}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`
@@ -186,7 +188,7 @@ function App() {
   const toggleParkingSpot = (id) => {
     const token = localStorage.getItem("token");
 
-    fetch(`https://localhost:7002/api/ParkingSports/${id}/toggle-status`, {
+    fetch(`${API_URL}/api/ParkingSports/${id}/toggle-status`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`
@@ -212,7 +214,7 @@ function App() {
 
   const login = () => {
     fetch(
-      `https://localhost:7002/login?Email=${encodeURIComponent(email)}&Password=${encodeURIComponent(password)}`,
+      `${API_URL}/login?Email=${encodeURIComponent(email)}&Password=${encodeURIComponent(password)}`,
       {
         method: "POST"
       }
@@ -264,7 +266,7 @@ function App() {
     }
 
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl("https://localhost:7002/parkingHub")
+      .withUrl(`${API_URL}/parkingHub`)
       .withAutomaticReconnect()
       .build();
 
