@@ -123,6 +123,54 @@ namespace ParkingService.Controller
             return Ok(parkingSpot);
         }
 
+        [HttpPut("{id}/occupy")]
+        public async Task<IActionResult> OccupyParkingSpot (int id)
+        {
+            var parkingSpot = await _context.ParkingSpots.FindAsync(id);
+
+            if(parkingSpot == null)
+            {
+                return NotFound("Parking spot not found");
+            }
+
+            if(parkingSpot.IsOccupied)
+            {
+                return BadRequest("Parking spot not found");
+            }
+
+            if(parkingSpot.IsOccupied)
+            {
+                return BadRequest("Parking spot is already occupied");
+            }
+
+            parkingSpot.IsOccupied = true;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(parkingSpot);
+        }
+        [HttpPut("{id}/release")]
+        public async Task<IActionResult> ReleaseParkingSpot (int id)
+        {
+            var parkingSpot = await _context.ParkingSpots.FindAsync(id);
+
+            if(parkingSpot == null)
+            {
+                return NotFound("Parking spot not found");
+            }
+
+            if(!parkingSpot.IsOccupied)
+            {
+                return Ok(parkingSpot);
+            }
+
+            parkingSpot.IsOccupied = false;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(parkingSpot);
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteParkingSpot(int id)
         {

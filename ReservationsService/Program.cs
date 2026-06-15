@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ReservationsService.Data;
+using ReservationsService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,7 @@ builder.Services.AddControllers();
 
 builder.Services.AddDbContext<ReservationDbContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("ReservationConnection")));
+builder.Services.AddHttpClient<ParkingServiceClient>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

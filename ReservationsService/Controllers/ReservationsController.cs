@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ReservationsService.Data;
 using ReservationsService.DTOs;
 using ReservationsService.Entities;
+using ReservationsService.Services;
 
 namespace ReservationsService.Controllers
 {
@@ -11,9 +12,11 @@ namespace ReservationsService.Controllers
     public class ReservationsController : ControllerBase
     {
         private readonly ReservationDbContext _context;
-        public ReservationsController(ReservationDbContext context)
+        private readonly ParkingServiceClient _parkingServiceClient;
+        public ReservationsController(ReservationDbContext context, ParkingServiceClient parkingServiceClient)
         {
             _context = context;
+            _parkingServiceClient = parkingServiceClient;
         }
 
         [HttpGet]
@@ -43,6 +46,18 @@ namespace ReservationsService.Controllers
                 return BadRequest("End time must be greater than start time");
             }
 
+            var parkingSpot = await _parkingServiceClient.GetParkingSpotById(dto.ParkingSpotId);
+
+            if(parkingSpot == null)
+            {
+                return BadRequest("Parking spot not found");
+            }
+
+            if(parkingSpot.IsOccupied)
+            {
+                return BadRequest("Parking spot is already occupied");
+            }
+
             var hasActiveReservation = await _context.Reservations
                 .AnyAsync(x => x.UserId == dto.UserId && x.Status == "Active");
 
@@ -52,7 +67,7 @@ namespace ReservationsService.Controllers
             }
 
             var totalHours = (decimal)(dto.EndTime - dto.StartTime).TotalHours;
-            var totalPrice = totalHours * dto.HourlyPrice;
+            var totalPrice = totalHours * parkingSpot.HourlyPrice;
 
             var reservation = new Reservation
             {
@@ -67,6 +82,13 @@ namespace ReservationsService.Controllers
             _context.Reservations.Add(reservation);
             await _context.SaveChangesAsync();
 
+            var occupied = await _parkingServiceClient.OccupyParkingSpot(dto.ParkingSpotId);
+
+            if(!occupied)
+            {
+                return BadRequest("Reservation created but parking spot could not be occupied");
+            }
+
             return Ok(reservation);
         }
 
@@ -75,19 +97,25 @@ namespace ReservationsService.Controllers
         {
             var reservation = await _context.Reservations.FindAsync(id);
 
-            if(reservation == null)
+            if (reservation == null)
             {
-                return NotFound("Reservation not found");
+                return NotFound("Reservation not found.");
             }
 
-            if(reservation.Status == "Active")
+            var released = await _parkingServiceClient.ReleaseParkingSpot(reservation.ParkingSpotId);
+
+            if (!released)
             {
-                return NotFound("Reservation not found");
+                return BadRequest("Parking spot could not be released.");
             }
 
-            reservation.Status = "Completed";
+            if (reservation.Status != "Completed")
+            {
+                reservation.Status = "Completed";
+                await _context.SaveChangesAsync();
+            }
 
-            return Ok("Reservation completed succesfully");
+            return Ok("Reservation completed successfully.");
         }
 
         [HttpDelete("{id}")]
