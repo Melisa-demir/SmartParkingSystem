@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="ApiGateway/ApiGateway.csproj" Id="232fff5f-1e39-4d91-a90f-1731199f2d01" />
   <Project Path="ParkingService/ParkingService.csproj" />
   <Project Path="PaymentService/PaymentService.csproj" Id="71e361c7-c328-4584-bd22-a14e01517154" />
   <Project Path="ReservationsService/ReservationsService.csproj" Id="a19b42e0-6f28-4e62-a087-d0100c14afa3" />
