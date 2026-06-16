@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="docker-compose.microservices.yml" />
+  </Folder>
   <Project Path="ApiGateway/ApiGateway.csproj" Id="232fff5f-1e39-4d91-a90f-1731199f2d01" />
   <Project Path="ParkingService/ParkingService.csproj" />
   <Project Path="PaymentService/PaymentService.csproj" Id="71e361c7-c328-4584-bd22-a14e01517154" />

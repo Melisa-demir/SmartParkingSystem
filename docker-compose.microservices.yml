@@ -1,0 +1,75 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: smartparking-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "SmartParking123!"
+    ports:
+      - "1434:1433"
+    volumes:
+      - smartparking_sql_data:/var/opt/mssql
+
+  parkingservice:
+    build:
+      context: .
+      dockerfile: ParkingService/Dockerfile
+    container_name: smartparking-parkingservice
+    ports:
+      - "8018:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Docker"
+      ConnectionStrings__ParkingConnection: "Server=sqlserver,1433;Database=ParkingServiceDb;User Id=sa;Password=SmartParking123!;TrustServerCertificate=True;"
+    depends_on:
+      - sqlserver
+    restart: on-failure
+
+  reservationsservice:
+    build:
+      context: .
+      dockerfile: ReservationsService/Dockerfile
+    container_name: smartparking-reservationsservice
+    ports:
+      - "8259:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Docker"
+      ConnectionStrings__ReservationConnection: "Server=sqlserver,1433;Database=ReservationServiceDb;User Id=sa;Password=SmartParking123!;TrustServerCertificate=True;"
+      ServiceUrls__ParkingService: "http://parkingservice:8080"
+    depends_on:
+      - sqlserver
+      - parkingservice
+    restart: on-failure
+
+  paymentservice:
+    build:
+      context: .
+      dockerfile: PaymentService/Dockerfile
+    container_name: smartparking-paymentservice
+    ports:
+      - "8062:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Docker"
+      ConnectionStrings__PaymentConnection: "Server=sqlserver,1433;Database=PaymentServiceDb;User Id=sa;Password=SmartParking123!;TrustServerCertificate=True;"
+      ServiceUrls__ReservationsService: "http://reservationsservice:8080"
+    depends_on:
+      - sqlserver
+      - reservationsservice
+    restart: on-failure
+
+  apigateway:
+    build:
+      context: .
+      dockerfile: ApiGateway/Dockerfile
+    container_name: smartparking-apigateway
+    ports:
+      - "7100:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Docker"
+    depends_on:
+      - parkingservice
+      - reservationsservice
+      - paymentservice
+    restart: on-failure
+
+volumes:
+  smartparking_sql_data:

@@ -1,0 +1,103 @@
+{
+    "Routes": [
+        {
+            "DownstreamPathTemplate": "/api/ParkingSpots",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "parkingservice",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/gateway/parking-spots",
+            "UpstreamHttpMethod": [ "GET", "POST" ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/ParkingSpots/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "parkingservice",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/gateway/parking-spots/{everything}",
+            "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/ParkingLots",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "parkingservice",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/gateway/parking-lots",
+            "UpstreamHttpMethod": [ "GET", "POST" ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/ParkingLots/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "parkingservice",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/gateway/parking-lots/{everything}",
+            "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/Reservations",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "reservationsservice",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/gateway/reservations",
+            "UpstreamHttpMethod": [ "GET", "POST" ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/Reservations/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "reservationsservice",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/gateway/reservations/{everything}",
+            "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/Payments",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "paymentservice",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/gateway/payments",
+            "UpstreamHttpMethod": [ "GET", "POST" ]
+        },
+        {
+            "DownstreamPathTemplate": "/api/Payments/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "paymentservice",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/gateway/payments/{everything}",
+            "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ]
+        }
+    ],
+    "GlobalConfiguration": {
+        "BaseUrl": "http://localhost:7100"
+    }
+}
