@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import * as signalR from "@microsoft/signalr";
 
-const API_URL = "http://localhost:5005";
+const API_URL = "http://localhost:7100";
 
 function App() {
   const [parkingSpots, setParkingSpots] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [adminDashboard, setAdminDashboard] = useState(null);
+  const [payments, setPayments] = useState([]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,54 +20,55 @@ function App() {
   const isAdmin = role === "Admin";
 
   const getParkingSpots = () => {
-    const token = localStorage.getItem("token");
+  fetch(`${API_URL}/gateway/parking-spots`)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error("Parking spots alınamadı: " + response.status);
+      }
 
-    fetch(`${API_URL}/api/ParkingSports`, {
-      headers: {
-        Authorization: `Bearer ${token}`
+      return await response.json();
+    })
+    .then((data) => setParkingSpots(data))
+    .catch((error) => console.error(error));
+};
+
+const getReservations = () => {
+  fetch(`${API_URL}/gateway/reservations`)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error("Reservations alınamadı: " + response.status);
+      }
+
+      return await response.json();
+    })
+    .then((data) => {
+      const userId = Number(localStorage.getItem("userId"));
+
+      if (isAdmin) {
+        setReservations(data);
+      } else {
+        const myReservations = data.filter(
+          (reservation) => reservation.userId === userId
+        );
+
+        setReservations(myReservations);
       }
     })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("Parking spots alınamadı: " + response.status);
-        }
+    .catch((error) => console.error(error));
+};
 
-        return await response.json();
-      })
-      .then((data) => setParkingSpots(data))
-      .catch((error) => console.error(error));
-  };
-
-  const getReservations = () => {
-    const token = localStorage.getItem("token");
-
-    fetch(`${API_URL}/api/Reservations`, {
-      headers: {
-        Authorization: `Bearer ${token}`
+const getPayments = () => {
+  fetch(`${API_URL}/gateway/payments`)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error("Payments alınamadı: " + response.status);
       }
+
+      return await response.json();
     })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("Reservations alınamadı: " + response.status);
-        }
-
-        return await response.json();
-      })
-      .then((data) => {
-        const userId = Number(localStorage.getItem("userId"));
-
-        if (isAdmin) {
-          setReservations(data);
-        } else {
-          const myReservations = data.filter(
-            (reservation) => reservation.userId === userId
-          );
-
-          setReservations(myReservations);
-        }
-      })
-      .catch((error) => console.error(error));
-  };
+    .then((data) => setPayments(data))
+    .catch((error) => console.error(error));
+};
 
   const getAdminDashboard = () => {
     const token = localStorage.getItem("token");
@@ -96,19 +97,18 @@ function App() {
     const endTime = new Date();
     endTime.setHours(endTime.getHours() + 2);
 
-    fetch(`${API_URL}/api/Reservations`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        userId: Number(userId),
-        parkingSpotId: parkingSpotId,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString()
-      })
-    })
+fetch(`${API_URL}/gateway/reservations`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    userId: Number(userId),
+    parkingSpotId: parkingSpotId,
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString()
+  })
+})
       .then(async (response) => {
         const text = await response.text();
 
@@ -131,7 +131,7 @@ function App() {
   const completeReservation = (id) => {
     const token = localStorage.getItem("token");
 
-    fetch(`${API_URL}/api/Reservations/${id}/complete`, {
+    fetch(`${API_URL}/gateway/reservations/${id}/complete`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`
@@ -156,6 +156,31 @@ function App() {
       .catch((error) => console.error(error));
   };
 
+  const createPayment = (reservationId) => {
+  fetch(`${API_URL}/gateway/payments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      reservationId: reservationId,
+      paymentMethod: "Card"
+    })
+  })
+    .then(async (response) => {
+      const text = await response.text();
+
+      if (!response.ok) {
+        alert(text || "Ödeme oluşturulamadı.");
+        return;
+      }
+
+      alert("Ödeme başarılı.");
+      getPayments();
+    })
+    .catch((error) => console.error(error));
+};
+
   const deleteAllReservations = () => {
     const token = localStorage.getItem("token");
 
@@ -165,7 +190,7 @@ function App() {
 
     Promise.all(
       reservations.map((reservation) =>
-        fetch(`${API_URL}/api/Reservations/${reservation.id}`, {
+        fetch(`${API_URL}/gateway/reservations/${reservation.id}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`
@@ -185,255 +210,240 @@ function App() {
       .catch((error) => console.error(error));
   };
 
-  const toggleParkingSpot = (id) => {
-    const token = localStorage.getItem("token");
+  const toggleParkingSpot = (spot) => {
+  const action = spot.isOccupied ? "release" : "occupy";
 
-    fetch(`${API_URL}/api/ParkingSports/${id}/toggle-status`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`
+  fetch(`${API_URL}/gateway/parking-spots/${spot.id}/${action}`, {
+    method: "PUT"
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error("Park yeri güncellenemedi: " + response.status);
       }
+
+      return await response.json();
     })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("Park yeri güncellenemedi: " + response.status);
-        }
-
-        return await response.json();
-      })
-      .then(() => {
-        getParkingSpots();
-        getReservations();
-
-        if (isAdmin) {
-          getAdminDashboard();
-        }
-      })
-      .catch((error) => console.error(error));
-  };
-
-  const login = () => {
-    fetch(
-      `${API_URL}/login?Email=${encodeURIComponent(email)}&Password=${encodeURIComponent(password)}`,
-      {
-        method: "POST"
-      }
-    )
-      .then(async (response) => {
-        const text = await response.text();
-
-        if (!response.ok) {
-          alert(text || "Login başarısız. Email veya şifre hatalı olabilir.");
-          return;
-        }
-
-        const data = JSON.parse(text);
-
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userId", data.user.id);
-        localStorage.setItem("role", data.user.role);
-
-        setRole(data.user.role);
-        setIsLoggedIn(true);
-
-        alert("Login başarılı");
-      })
-      .catch((error) => console.error(error));
-  };
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("role");
-
-    setIsLoggedIn(false);
-    setRole(null);
-    setParkingSpots([]);
-    setReservations([]);
-    setAdminDashboard(null);
-  };
-
-  useEffect(() => {
-    if (!isLoggedIn) {
-      return;
-    }
-
-    getParkingSpots();
-    getReservations();
-
-    if (isAdmin) {
-      getAdminDashboard();
-    }
-
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${API_URL}/parkingHub`)
-      .withAutomaticReconnect()
-      .build();
-
-    connection
-      .start()
-      .then(() => console.log("SignalR bağlantısı kuruldu."))
-      .catch((error) => console.error("SignalR bağlantı hatası:", error));
-
-    connection.on("ParkingSpotUpdated", () => {
-      console.log("Parking spot güncellendi.");
+    .then(() => {
       getParkingSpots();
       getReservations();
+    })
+    .catch((error) => console.error(error));
+};
+  const login = () => {
+  localStorage.setItem("token", "dev-token");
+  localStorage.setItem("userId", "400");
+  localStorage.setItem("role", "User");
 
-      if (isAdmin) {
-        getAdminDashboard();
-      }
-    });
+  setRole("User");
+  setIsLoggedIn(true);
 
-    return () => {
-      connection.stop();
-    };
-  }, [isLoggedIn, role]);
+  alert("Login geçici olarak başarılı sayıldı.");
+};
 
+  const logout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("userId");
+  localStorage.removeItem("role");
+
+  setIsLoggedIn(false);
+  setRole(null);
+  setParkingSpots([]);
+  setReservations([]);
+  setAdminDashboard(null);
+};
+
+useEffect(() => {
   if (!isLoggedIn) {
-    return (
-      <div>
-        <h1>🚗 Smart Parking System</h1>
-
-        <h2>Login</h2>
-
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <br />
-        <br />
-
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <br />
-        <br />
-
-        <button onClick={login}>Login</button>
-      </div>
-    );
+    return;
   }
 
-  return (
-    <div>
-      <h1>🚗 Smart Parking System</h1>
+  getParkingSpots();
+  getReservations();
+  getPayments();
+}, [isLoggedIn, role]);
 
-      <p>
-        Giriş yapan rol: <strong>{role}</strong>
-      </p>
+if (!isLoggedIn) {
+return ( <div> <h1>🚗 Smart Parking System</h1>
 
-      <button onClick={logout}>Logout</button>
 
-      <h2>Dashboard</h2>
+  <h2>Login</h2>
 
-      {isAdmin && adminDashboard && (
-        <div>
-          <h3>Admin Dashboard</h3>
+  <input
+    type="email"
+    placeholder="Email"
+    value={email}
+    onChange={(e) => setEmail(e.target.value)}
+  />
 
-          <p>Toplam Kullanıcı: {adminDashboard.totalUsers}</p>
-          <p>Toplam Rezervasyon: {adminDashboard.totalReservations}</p>
-          <p>Aktif Rezervasyon: {adminDashboard.activeReservations}</p>
-          <p>Tamamlanan Rezervasyon: {adminDashboard.completedReservations}</p>
-          <p>Toplam Park Yeri: {adminDashboard.totalParkingSpots}</p>
-          <p>Dolu Park Yeri: {adminDashboard.occupiedParkingSpots}</p>
-          <p>Boş Park Yeri: {adminDashboard.emptyParkingSpots}</p>
+  <br />
+  <br />
 
-          <hr />
-        </div>
-      )}
+  <input
+    type="password"
+    placeholder="Password"
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+  />
 
-      <p>Toplam Park Yeri: {parkingSpots.length}</p>
+  <br />
+  <br />
 
-      <p>
-        Boş Park Yeri:{" "}
-        {parkingSpots.filter((spot) => !spot.isOccupied).length}
-      </p>
+  <button onClick={login}>Login</button>
+</div>
 
-      <p>
-        Dolu Park Yeri:{" "}
-        {parkingSpots.filter((spot) => spot.isOccupied).length}
-      </p>
 
-      <h2>Parking Spots</h2>
+);
+}
 
-      {parkingSpots.map((spot) => (
-        <div key={spot.id}>
-          <strong>{spot.spotNumber}</strong> -
-          {spot.isOccupied ? " Occupied" : " Empty"}
+return (
 
-          {!spot.isOccupied && (
-            <button onClick={() => createReservation(spot.id)}>
-              Rezervasyon Yap
-            </button>
-          )}
+  <div>
+    <h1>🚗 Smart Parking System</h1>
 
-          {isAdmin && (
-            <button onClick={() => toggleParkingSpot(spot.id)}>
-              {spot.isOccupied ? "Boş Yap" : "Dolu Yap"}
-            </button>
-          )}
-        </div>
-      ))}
 
-      <h2>{isAdmin ? "All Reservations" : "My Reservations"}</h2>
+<p>
+  Giriş yapan rol: <strong>{role}</strong>
+</p>
 
-      {isAdmin && reservations.length > 0 && (
-        <button onClick={deleteAllReservations}>
-          Tüm Rezervasyonları Sil
-        </button>
-      )}
+<button onClick={logout}>Logout</button>
 
-      {reservations.length === 0 && <p>Henüz rezervasyon bulunmuyor.</p>}
+<h2>Dashboard</h2>
 
-      {reservations.map((reservation) => (
-        <div key={reservation.id}>
-          <strong>{reservation.parkingSpot?.spotNumber}</strong>
+{isAdmin && adminDashboard && (
+  <div>
+    <h3>Admin Dashboard</h3>
 
-          <br />
+    <p>Toplam Kullanıcı: {adminDashboard.totalUsers}</p>
+    <p>Toplam Rezervasyon: {adminDashboard.totalReservations}</p>
+    <p>Aktif Rezervasyon: {adminDashboard.activeReservations}</p>
+    <p>Tamamlanan Rezervasyon: {adminDashboard.completedReservations}</p>
+    <p>Toplam Park Yeri: {adminDashboard.totalParkingSpots}</p>
+    <p>Dolu Park Yeri: {adminDashboard.occupiedParkingSpots}</p>
+    <p>Boş Park Yeri: {adminDashboard.emptyParkingSpots}</p>
 
-          {isAdmin && (
-            <>
-              User Id: {reservation.userId}
-              <br />
-            </>
-          )}
+    <hr />
+  </div>
+)}
 
-          Start: {new Date(reservation.startTime).toLocaleString()}
+<p>Toplam Park Yeri: {parkingSpots.length}</p>
 
-          <br />
+<p>
+  Boş Park Yeri:{" "}
+  {parkingSpots.filter((spot) => !spot.isOccupied).length}
+</p>
 
-          End: {new Date(reservation.endTime).toLocaleString()}
+<p>
+  Dolu Park Yeri:{" "}
+  {parkingSpots.filter((spot) => spot.isOccupied).length}
+</p>
 
-          <br />
+<h2>Parking Spots</h2>
 
-          Price: {reservation.totalPrice} TL
+{parkingSpots.map((spot) => (
+  <div key={spot.id}>
+    <strong>{spot.spotNumber}</strong> -
+    {spot.isOccupied ? " Occupied" : " Empty"}
 
-          <br />
+    {!spot.isOccupied && (
+      <button onClick={() => createReservation(spot.id)}>
+        Rezervasyon Yap
+      </button>
+    )}
 
-          Status: {reservation.status}
+    {isAdmin && (
+      <button onClick={() => toggleParkingSpot(spot)}>
+        {spot.isOccupied ? "Boş Yap" : "Dolu Yap"}
+      </button>
+    )}
+  </div>
+))}
 
-          {reservation.status === "Active" && (
-            <>
-              <br />
-              <button onClick={() => completeReservation(reservation.id)}>
-                Rezervasyonu Tamamla
-              </button>
-            </>
-          )}
+<h2>{isAdmin ? "All Reservations" : "My Reservations"}</h2>
 
-          <hr />
-        </div>
-      ))}
-    </div>
-  );
+{isAdmin && reservations.length > 0 && (
+  <button onClick={deleteAllReservations}>
+    Tüm Rezervasyonları Sil
+  </button>
+)}
+
+{reservations.length === 0 && <p>Henüz rezervasyon bulunmuyor.</p>}
+
+{reservations.map((reservation) => (
+  <div key={reservation.id}>
+    <strong>Parking Spot Id: {reservation.parkingSpotId}</strong>
+
+    <br />
+
+    {isAdmin && (
+      <>
+        User Id: {reservation.userId}
+        <br />
+      </>
+    )}
+
+    Start: {new Date(reservation.startTime).toLocaleString()}
+
+    <br />
+
+    End: {new Date(reservation.endTime).toLocaleString()}
+
+    <br />
+
+    Price: {reservation.totalPrice} TL
+
+    <br />
+
+    Status: {reservation.status}
+
+    {reservation.status === "Active" && (
+  <>
+    <br />
+
+    <button onClick={() => createPayment(reservation.id)}>
+      Ödeme Yap
+    </button>
+
+    <button onClick={() => completeReservation(reservation.id)}>
+      Rezervasyonu Tamamla
+    </button>
+  </>
+)}
+
+    <hr />
+
+    <h2>Payments</h2>
+
+{payments.length === 0 && <p>Henüz ödeme bulunmuyor.</p>}
+
+{payments.map((payment) => (
+  <div key={payment.id}>
+    <strong>Payment Id: {payment.id}</strong>
+
+    <br />
+
+    Reservation Id: {payment.reservationId}
+
+    <br />
+
+    Amount: {payment.amount} TL
+
+    <br />
+
+    Method: {payment.paymentMethod}
+
+    <br />
+
+    Status: {payment.paymentStatus}
+
+    <hr />
+  </div>
+))}
+  </div>
+))}
+
+
+  </div>
+);
 }
 
 export default App;
